@@ -1,1 +1,1 @@
-# CSCI-653-FALL-2022
+# Molecular dynamics simulations of physical vapor deposition for high entropy alloys
