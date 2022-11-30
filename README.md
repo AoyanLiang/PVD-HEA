@@ -6,5 +6,5 @@ LAMMPS and OVITO
 ## Goal
 Investigate the effect of atomic size difference on the microstructure formation in HEA films.  
   
-https://user-images.githubusercontent.com/71674932/204922590-45282cea-0e93-459c-826a-56c499b777bb.mp4
+
 
