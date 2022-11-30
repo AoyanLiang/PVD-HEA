@@ -6,5 +6,5 @@ LAMMPS and OVITO
 ## Goal
 Investigate the effect of atomic size difference on the microstructure formation in HEA films.  
   
-
+![PVD process](https://github.com/AoyanLiang/PVD-HEA/blob/main/example.gif).  
 
