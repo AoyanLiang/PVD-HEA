@@ -5,6 +5,8 @@ High entropy alloy (HEA) is a new idea for alloy design based on combinations of
 LAMMPS and OVITO
 ## Goal
 Investigate the effect of atomic size difference on the microstructure formation in HEA films.  
-  
+## Preliminary results
+An increased atomic size difference results in a FCC to amorphous phase transition in HEAs. 
+
 ![PVD process](https://github.com/AoyanLiang/PVD-HEA/blob/main/example.gif).  
 
