@@ -1,0 +1,135 @@
+#setting up script to test sputtering. Sputtering will be done by making a second bank of particles, removing most of them and applying a vertical velocity towards a plate 
+echo        both
+
+#metal units 
+units       metal
+
+#dimension and aton style 
+dimension     3
+atom_style    atomic
+boundary      p p p
+
+
+#minimization parameters
+variable      etol equal 1.0e-8
+variable      ftol equal 1.0e-8
+variable      maxiter equal 10000
+variable      maxeval equal 10000
+variable      dmax equal 1.0e-2
+
+#box parameters
+variable len index 20
+variable height index 9 
+
+variable depEnergy equal 1
+variable angle equal 0
+variable vx equal 0
+
+#variable massAl equal 27.00
+variable massCo equal 58.93
+variable massCr equal 52.00
+variable massNi equal 58.69
+variable massFe equal 55.85
+variable massTi equal 47.9
+
+#variable vzAl equal -sqrt(${depEnergy}*2*(1.6e-19)/(${massAl}*(1.66e-27)))/100
+variable vzCo equal -sqrt(${depEnergy}*2*(1.6e-19)/(${massCo}*(1.66e-27)))/100
+variable vzCr equal -sqrt(${depEnergy}*2*(1.6e-19)/(${massCr}*(1.66e-27)))/100
+variable vzNi equal -sqrt(${depEnergy}*2*(1.6e-19)/(${massNi}*(1.66e-27)))/100
+variable vzFe equal -sqrt(${depEnergy}*2*(1.6e-19)/(${massFe}*(1.66e-27)))/100
+variable vzTi equal -sqrt(${depEnergy}*2*(1.6e-19)/(${massTi}*(1.66e-27)))/100
+
+#set up box and system 
+
+lattice         fcc 3.52 origin 0.01 0.01 0.01 orient y 0 1 0 orient z 0 0 1 orient x 1 0 0 spacing 1 1 1
+region box block 0 ${len} 0 ${len} -1 45 units lattice
+region bottom block 0 ${len} 0 ${len} 0 ${height} units lattice
+
+create_box 6 box
+create_atoms 1 region bottom
+
+group substrate region bottom
+region freezelayers block INF INF INF INF 0 1 units lattice 
+group freezelayers region freezelayers
+
+region topLayers block INF INF INF INF 6 9 units lattice
+group surface region topLayers
+
+group mobile subtract substrate freezelayers
+group thermostat subtract substrate freezelayers surface
+group deposit subtract all substrate 
+
+
+#Pair style 
+pair_style eam/alloy
+pair_coeff * * FeNiCrCoTiAl-heamix.setfl Ni Co Cr Fe Ni Ti
+
+
+##neighbor style 
+neighbor    2.0 bin
+neigh_modify   delay 0 every 1 check no	
+
+
+fix 5 all balance 1000 1.05 shift z 10 1.05
+
+#minimization 
+fix 3 all box/relax aniso 0
+min_style cg
+minimize ${etol} ${ftol} ${maxiter} ${maxeval}
+min_modify dmax ${dmax} line quadratic
+unfix 3
+
+change_box all boundary p p f
+
+#setup output 
+thermo 100
+fix time all dt/reset 1 NULL 0.001 0.2 units box
+velocity mobile create 300 134131 mom yes rot yes dist gaussian
+compute  surfaceTemp surface temp
+compute  thermoTemp thermostat temp
+compute  botTemp mobile temp
+compute  depositTemp deposit temp
+compute_modify depositTemp dynamic/dof yes
+compute allpe all pe/atom
+thermo_style custom step dt temp pe ke etotal atoms c_thermoTemp c_surfaceTemp c_depositTemp
+thermo_modify norm no
+
+# fix
+fix 1 all nve
+fix 2 thermostat langevin 300 300 1 12321
+fix_modify 2 temp thermoTemp
+thermo_modify temp botTemp
+
+velocity        freezelayers set 0.0 0.0 0.0
+fix             8 freezelayers setforce 0.0 0.0 0.0
+dump dumpequil all custom 10000 equil.out id xs ys zs vx vy vz
+run 200000
+undump dumpequil
+
+#deposition start
+ 
+dump depositing all custom 150000 deposit.out id type mass xs ys zs vx vy vz c_allpe
+
+region top block EDGE EDGE EDGE EDGE 44.5 44.9 units lattice
+group top region top
+
+fix insertCo deposit deposit 6000 2 5000  1234 region top vx ${vx} ${vx} vz ${vzCo} ${vzCo} units box
+fix insertCr deposit deposit 6000 3 5000  1218 region top vx ${vx} ${vx} vz ${vzCr} ${vzCr} units box
+fix insertFe deposit deposit 6000 4 5000  1243 region top vx ${vx} ${vx} vz ${vzFe} ${vzFe} units box
+fix insertNi deposit deposit 6000 5 5000  1220 region top vx ${vx} ${vx} vz ${vzNi} ${vzNi} units box
+fix insertTi deposit deposit 6000 6 5000  1209 region top vx ${vx} ${vx} vz ${vzTi} ${vzTi} units box
+
+thermo_style custom step dt temp pe ke etotal atoms c_thermoTemp c_surfaceTemp c_depositTemp
+
+thermo_modify lost ignore 
+
+run 30000000  
+
+#unfix insertAl
+unfix insertCo
+unfix insertCr
+unfix insertNi
+unfix insertFe
+unfix insertTi 
+
+write_restart deposit.restart
